@@ -1,0 +1,3 @@
+(test
+ (name tlvm)
+ (libraries base core))

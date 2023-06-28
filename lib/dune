@@ -1,0 +1,5 @@
+(library
+ (name tlvm)
+ (libraries core str))
+
+(include_subdirs unqualified)
