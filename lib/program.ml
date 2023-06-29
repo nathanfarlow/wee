@@ -24,8 +24,8 @@ module Make (Resolver : Resolver_intf.S) = struct
     [ Swap; Mov (Pseudo_register_addr register); Store ]
 
   let init_regs mem_size =
-    (Mov (Const (mem_size - 1)) :: write_pseudo (Elvm SP))
-    @ write_pseudo (Elvm BP)
+    let init reg = Mov (Const (mem_size - 1)) :: write_pseudo (Elvm reg) in
+    init SP @ init BP
 
   (* A = src. B is unchanged *)
   let read program src : Symbolic_instruction.t list =
@@ -221,17 +221,17 @@ module Make (Resolver : Resolver_intf.S) = struct
       init_regs mem_size @ init_data program
       @ Resolver.make_initializer resolver program
     in
-    let translated, resolve_elvm_text =
-      let elvm_text_map = Hashtbl.create (module Int) in
-      let tlvm_pc = ref 0 in
-      let instructions =
-        List.concat_mapi program.instructions ~f:(fun elvm_pc insn ->
-            Hashtbl.add_exn elvm_text_map ~key:elvm_pc ~data:!tlvm_pc;
-            let lowered = lower_instruction program insn in
-            tlvm_pc := !tlvm_pc + List.length lowered;
-            lowered)
-      in
-      (instructions, fun elvm_pc -> Hashtbl.find_exn elvm_text_map elvm_pc)
+    let address_mapping = Hashtbl.create (module Int) in
+    let tlvm_pc = ref 0 in
+    let translated =
+      List.concat_mapi program.instructions ~f:(fun elvm_pc insn ->
+          Hashtbl.add_exn address_mapping ~key:elvm_pc ~data:!tlvm_pc;
+          let lowered = lower_instruction program insn in
+          tlvm_pc := !tlvm_pc + List.length lowered;
+          lowered)
+    in
+    let resolve_elvm_text elvm_pc =
+      List.length init + Hashtbl.find_exn address_mapping elvm_pc
     in
     let resolver = Resolver.make_resolver resolver program in
     (* We will place the pseudo registers at the first 7 addresses *)
