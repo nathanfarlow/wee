@@ -4,29 +4,6 @@ open Elvm_program
 module Make (Jump_table : Jump_table_intf.S) = struct
   type t = Instruction.t list
 
-  type immediate =
-    (* elvm instruction address *)
-    | Elvm_text_addr of int
-    (* elvm data address *)
-    | Elvm_data_addr of int
-    (* tlvm address relative to tlvm pc *)
-    | Relative of int
-    (* constant value *)
-    | Const of int
-
-  type relative_instruction =
-    | Mov of immediate
-    | Swap
-    | Add
-    | Sub
-    | Load
-    | Store
-    | Setlt
-    | Jmpz of immediate
-    | Getc
-    | Putc
-    | Exit
-
   module Pseudo_register = struct
     type tlvm_register = TEMP | PC
     type t = Elvm of Elvm_instruction.register | Tlvm of tlvm_register
@@ -44,10 +21,37 @@ module Make (Jump_table : Jump_table_intf.S) = struct
     let num_registers () = 8
   end
 
+  type immediate =
+    (* elvm instruction address *)
+    | Elvm_text_addr of int
+    (* elvm data address *)
+    | Elvm_data_addr of int
+    (* tlvm address relative to tlvm pc *)
+    | Pc_relative of int
+    (* constant value *)
+    | Const of int
+    (* base address of the resolver *)
+    | Resolver_base
+    (* address of a pseudo register *)
+    | Pseudo_register_addr of Pseudo_register.t
+
+  type relative_instruction =
+    | Mov of immediate
+    | Swap
+    | Add
+    | Sub
+    | Load
+    | Store
+    | Setlt
+    | Jmpz of immediate
+    | Getc
+    | Putc
+    | Exit
+
   let init_data elvm =
     Mov (Elvm_data_addr 0)
     :: List.concat_map elvm.data ~f:(fun v ->
-           [ Swap; Mov (Const v); Swap; Store; Mov (Const v); Add ])
+           [ Swap; Mov (Const v); Swap; Store; Mov (Const 1); Add ])
 
   let get_label_address_exn elvm label =
     let address = Hashtbl.find_exn elvm.labels label in
@@ -55,11 +59,12 @@ module Make (Jump_table : Jump_table_intf.S) = struct
     | Data -> Elvm_data_addr address.offset
     | Text -> Elvm_text_addr address.offset
 
-  let load_pseudo register =
-    [ Mov (Const (Pseudo_register.to_addr register)); Load ]
+  (* A = pseudo register value *)
+  let load_pseudo register = [ Mov (Pseudo_register_addr register); Load ]
 
+  (* store A into pseudo register *)
   let store_pseudo register =
-    [ Swap; Mov (Const (Pseudo_register.to_addr register)); Store ]
+    [ Swap; Mov (Pseudo_register_addr register); Store ]
 
   (* load from src into A. B is unchanged *)
   let load elvm src : relative_instruction list =
@@ -92,11 +97,11 @@ module Make (Jump_table : Jump_table_intf.S) = struct
             (* A = A - B *)
             Sub;
             (* if A is 0, jump to set A = 1 *)
-            Jmpz (Relative 3);
+            Jmpz (Pc_relative 3);
             (* otherwise, set A = 0 *)
             Mov (Const 0);
             (* jump to end *)
-            Jmpz (Relative 2);
+            Jmpz (Pc_relative 2);
             (* A = 1 *)
             Mov (Const 1);
           ]
@@ -140,7 +145,7 @@ module Make (Jump_table : Jump_table_intf.S) = struct
         (* A = (A == 0) *)
         @ set_a_lt_one
 
-  let lower_instruction elvm instruction resolver_addr =
+  let lower_instruction elvm instruction =
     match instruction with
     | Elvm_instruction.Mov { src; dst } ->
         (* A = src *)
@@ -203,7 +208,7 @@ module Make (Jump_table : Jump_table_intf.S) = struct
           | Label l -> [ Mov (Const 0); Jmpz (get_label_address_exn elvm l) ]
           | Register r ->
               load elvm (Register r)
-              @ [ Swap; Mov (Const 0); Jmpz (Const resolver_addr) ]
+              @ [ Swap; Mov (Const 0); Jmpz Resolver_base ]
         in
         let comparison =
           match condition with
@@ -212,7 +217,7 @@ module Make (Jump_table : Jump_table_intf.S) = struct
               make_comparison elvm comparison ~src:args.src
                 ~dst:(Register args.dst)
               (* don't jump if comparison failed *)
-              @ [ Jmpz (Relative (List.length jump + 1)) ]
+              @ [ Jmpz (Pc_relative (List.length jump + 1)) ]
           | None -> []
         in
         comparison @ jump
