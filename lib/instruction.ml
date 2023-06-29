@@ -1,4 +1,4 @@
-type instruction =
+type t =
   | Mov of int (* A = imm *)
   | Swap (* swap(A, B) *)
   | Add (* A = A + B *)
@@ -10,8 +10,3 @@ type instruction =
   | Getc (* A = getchar() *)
   | Putc (* putchar(A) *)
   | Exit (* exit(A) *)
-
-type t = instruction list
-
-val compile : Elvm_program.t -> int -> t
-val to_string : t -> string
