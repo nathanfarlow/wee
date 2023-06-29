@@ -35,16 +35,6 @@ type t = {
   labels : (string, address) Hashtbl.t;
 }
 
-let parse_label line =
-  match String.split line ~on:':' with [ label; "" ] -> Some label | _ -> None
-
-let get_all_labels lines =
-  lines
-  |> List.filter_map ~f:parse_label
-  (* add elvm's magic heap base pointer *)
-  |> List.append [ "_edata" ]
-  |> Hash_set.of_list (module String)
-
 type long = Label of string | Number of int
 type data = Long of long | String of string
 
@@ -57,6 +47,16 @@ type statement =
   | Directive of Directive.t
   | Instruction of instruction
 
+let parse_label line =
+  match String.split line ~on:':' with [ label; "" ] -> Some label | _ -> None
+
+let get_all_labels lines =
+  lines
+  |> List.filter_map ~f:parse_label
+  (* add elvm's magic heap base pointer *)
+  |> List.append [ "_edata" ]
+  |> Hash_set.of_list (module String)
+
 let parse_number s =
   Caml.int_of_string_opt s
   (* elvm alternates between using signed and unsigned 24 bit integers. *)
@@ -67,9 +67,9 @@ let parse_directive labels line =
   let open Directive in
   match Str.bounded_split (Str.regexp "[ \t]+") line 2 with
   | [ ".text" ] -> Some (Text 0)
-  | [ ".text"; subsection ] -> Some (Text (Caml.int_of_string subsection))
+  | [ ".text"; subsection ] -> Some (Text (Int.of_string subsection))
   | [ ".data" ] -> Some (Data 0)
-  | [ ".data"; subsection ] -> Some (Data (Caml.int_of_string subsection))
+  | [ ".data"; subsection ] -> Some (Data (Int.of_string subsection))
   | [ ".long"; arg ] -> (
       match parse_number arg with
       | Some n -> Some (Init (Long (Number n)))
@@ -77,7 +77,7 @@ let parse_directive labels line =
           if Hash_set.mem labels arg then Some (Init (Long (Label arg)))
           else raise @@ Parse_error ("unknown argument for .long: " ^ arg))
   | [ ".string"; arg ] ->
-      let inside_quotes = Str.regexp "\"(.*)\"" in
+      let inside_quotes = Str.regexp {|"\(.*\)"|} in
       if Str.string_match inside_quotes arg 0 then
         let s = Scanf.unescaped @@ Str.matched_group 1 arg in
         Some (Init (String s))
@@ -137,9 +137,8 @@ let parse_instruction line labels =
   | [ "sub"; dst; src ] -> Some (Sub (parse_src_dst ~src ~dst))
   | [ "load"; dst; src ] -> Some (Load (parse_src_dst ~src ~dst))
   | [ "store"; src; dst ] ->
-      let src =
-        parse_register_exn (String.chop_suffix_if_exists src ~suffix:",")
-      in
+      let no_comma = String.chop_suffix_if_exists src ~suffix:"," in
+      let src = parse_register_exn no_comma in
       let dst = parse_immediate_or_register dst in
       Some (Store { src; dst })
   | [ "putc"; src ] -> Some (Putc (parse_immediate_or_register src))
@@ -284,7 +283,6 @@ let parse_exn source =
     |> List.map ~f:String.strip
     |> List.filter ~f:(fun line -> not @@ is_noop line)
   in
-  printf "lines: %d\n" (List.length lines);
   let labels = get_all_labels lines in
   let statements = List.map lines ~f:(parse_statement labels) in
   make_program statements
