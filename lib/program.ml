@@ -17,22 +17,22 @@ module Make (Resolver : Resolver_intf.S) = struct
     | Text -> Elvm_text_addr address.offset
 
   (* A = pseudo register value. B is unchanged *)
-  let load_pseudo register = [ Mov (Pseudo_register_addr register); Load ]
+  let read_pseudo register = [ Mov (Pseudo_register_addr register); Load ]
 
   (* store A into pseudo register. B is clobbered. *)
-  let store_pseudo register =
+  let write_pseudo register =
     [ Swap; Mov (Pseudo_register_addr register); Store ]
 
   let init_regs mem_size =
-    (Mov (Const (mem_size - 1)) :: store_pseudo (Elvm SP))
-    @ store_pseudo (Elvm BP)
+    (Mov (Const (mem_size - 1)) :: write_pseudo (Elvm SP))
+    @ write_pseudo (Elvm BP)
 
   (* A = src. B is unchanged *)
   let read program src : Symbolic_instruction.t list =
     let open Elvm_instruction in
     match src with
     | Int i -> [ Mov (Const i) ]
-    | Register r -> load_pseudo (Elvm r)
+    | Register r -> read_pseudo (Elvm r)
     | Label l -> [ Mov (get_label_address_exn program l) ]
 
   (* dst = A. B is clobbered *)
@@ -40,12 +40,11 @@ module Make (Resolver : Resolver_intf.S) = struct
     let open Elvm_instruction in
     match dst with
     | Int i -> [ Swap; Mov (Elvm_data_addr i); Store ]
-    | Register r -> store_pseudo (Elvm r)
+    | Register r -> write_pseudo (Elvm r)
     | Label l -> [ Swap; Mov (get_label_address_exn program l); Store ]
 
   (* A = comparison of src and dst. B is clobbered. *)
   let rec make_comparison program comparison ~src ~dst =
-    let set_a_lt_one = [ Swap; Mov (Const 1); Setlt ] in
     match comparison with
     | Elvm_instruction.Eq ->
         (* A = src *)
@@ -66,6 +65,21 @@ module Make (Resolver : Resolver_intf.S) = struct
             (* A = 1 *)
             Mov (Const 1);
           ]
+    | Elvm_instruction.Ne ->
+        (* A = src *)
+        read program src
+        (* B = A *)
+        @ [ Swap ]
+        (* A = dst *)
+        @ read program dst
+        @ [
+            (* A = A - B *)
+            Sub;
+            (* if A is 0, continue on *)
+            Jmpz (Pc_relative 2);
+            (* otherwise, set A = 1 *)
+            Mov (Const 1);
+          ]
     | Elvm_instruction.Lt ->
         (* A = src *)
         read program src
@@ -75,36 +89,23 @@ module Make (Resolver : Resolver_intf.S) = struct
         @ read program dst
         (* A = (A < B) *)
         @ [ Setlt ]
-    | Elvm_instruction.Gt ->
+    | Elvm_instruction.Le ->
         (* A = (src < dst) *)
         make_comparison program Elvm_instruction.Lt ~src ~dst
         (* TEMP = A *)
-        @ store_pseudo (Tlvm TEMP)
+        @ write_pseudo (Tlvm TEMP)
         (* A = (src == dst) *)
         @ make_comparison program Elvm_instruction.Eq ~src ~dst
         (* B = A *)
         @ [ Swap ]
         (* A = TEMP *)
-        @ load_pseudo (Tlvm TEMP)
+        @ read_pseudo (Tlvm TEMP)
         (* A = A + B *)
         @ [ Add ]
-        (* A = (A < 1), effectively A == 0 since A + B is 0, 1, or 2*)
-        @ set_a_lt_one
-    | Elvm_instruction.Ne ->
-        (* A = (src == dst) *)
-        make_comparison program Elvm_instruction.Eq ~src ~dst
-        (* A = (A == 0) *)
-        @ set_a_lt_one
-    | Elvm_instruction.Le ->
-        (* A = (src > dst) *)
-        make_comparison program Elvm_instruction.Gt ~src ~dst
-        (* A = (A == 0) *)
-        @ set_a_lt_one
+    | Elvm_instruction.Gt ->
+        make_comparison program Elvm_instruction.Le ~src:dst ~dst:src
     | Elvm_instruction.Ge ->
-        (* A = (src < dst) *)
-        make_comparison program Elvm_instruction.Lt ~src ~dst
-        (* A = (A == 0) *)
-        @ set_a_lt_one
+        make_comparison program Elvm_instruction.Lt ~src:dst ~dst:src
 
   let lower_instruction program instruction =
     match instruction with
