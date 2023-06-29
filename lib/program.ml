@@ -1,10 +1,10 @@
 open Core
+open Instruction
 
 module Make (Jump_table : Jump_table_intf.S) = struct
   type t = Instruction.t list
 
   let init_data (elvm : Elvm_program.t) =
-    let open Instruction in
     Mov 0
     :: List.concat_map elvm.data ~f:(fun v ->
            [ Swap; Mov v; Swap; Store; Mov 1; Add ])
