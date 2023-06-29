@@ -1,4 +1,5 @@
 type t = unit
 
 let create () = ()
-let build _t _elvm ~translate:_ = failwith "not implemented"
+let make_initializer _program _instructions = failwith "not implemented"
+let make_resolver _program _instructions = failwith "not implemented"
