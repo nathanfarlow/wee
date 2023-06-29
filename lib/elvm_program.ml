@@ -24,6 +24,10 @@ type statement =
   | Directive of Directive.t
   | Instruction of Elvm_instruction.t
 
+module Section = struct
+  type t = Text of int | Data of int
+end
+
 let parse_label line =
   match String.split line ~on:':' with [ label; "" ] -> Some label | _ -> None
 
@@ -150,10 +154,6 @@ let parse_statement labels line =
           | Some i -> Instruction i
           | None -> raise @@ Parse_error ("unknown statement: " ^ line)))
 
-module Section = struct
-  type t = Text of int | Data of int
-end
-
 let make_sections statements resolve_label =
   let labels = Hashtbl.create (module String) in
   let data = Hashtbl.create (module Int) in
@@ -238,14 +238,18 @@ let make_segments statements resolve_label =
         | Data sub -> make_address Data sub data_subsection_offsets offset
         | Text sub -> make_address Text sub text_subsection_offsets offset)
   in
+  (* add elvm's magic heap base pointer *)
   Hashtbl.add_exn segment_labels ~key:"_edata"
     ~data:{ segment = Data; offset = List.length data_segment };
   { data = data_segment; instructions = text_segment; labels = segment_labels }
 
 let make_program statements =
+  (* elvm has peculiar subsection behavior. As a result, we have to
+     parse out the .text and .data subsections, and then compile them
+     into two contiguous text and data segments. *)
   (* all references to labels are set to 0 as a first pass *)
   let program = make_segments statements (fun _ -> 0) in
-  (* parse again now that we know label offsets *)
+  (* parse again now that we know segment label offsets *)
   make_segments statements (fun label ->
       (Hashtbl.find_exn program.labels label).offset)
 
