@@ -8,7 +8,7 @@ module Make (Resolver : Resolver_intf.S) = struct
   let init_data program =
     Mov (Elvm_data_addr 0)
     :: List.concat_map program.data ~f:(fun v ->
-           [ Swap; Mov (Const v); Swap; Store; Mov (Const 1); Add ])
+           [ Swap; Mov (Const v); Swap; Store; Swap; Mov (Const 1); Add ])
 
   let get_label_address_exn program label =
     let address = Hashtbl.find_exn program.labels label in
