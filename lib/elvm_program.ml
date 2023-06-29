@@ -24,8 +24,6 @@ type instruction =
   | Set of condition
   | Dump
 
-exception Parse_error of string
-
 type segment = Data | Text
 type address = { segment : segment; offset : int }
 
@@ -34,6 +32,8 @@ type t = {
   instructions : instruction list;
   labels : (string, address) Hashtbl.t;
 }
+
+exception Parse_error of string
 
 type long = Label of string | Number of int
 type data = Long of long | String of string
@@ -286,8 +286,3 @@ let parse_exn source =
   let labels = get_all_labels lines in
   let statements = List.map lines ~f:(parse_statement labels) in
   make_program statements
-
-let get_data t = t.data
-let get_instructions t = t.instructions
-let get_num_labels t = Hashtbl.length t.labels
-let resolve_label t name = Hashtbl.find t.labels name

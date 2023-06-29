@@ -1,4 +1,5 @@
-type t
+open Core
+
 type register = A | B | C | D | SP | BP
 
 type immediate_or_register =
@@ -23,13 +24,15 @@ type instruction =
   | Set of condition
   | Dump
 
-exception Parse_error of string
-
 type segment = Data | Text
 type address = { segment : segment; offset : int }
 
+type t = {
+  data : int list;
+  instructions : instruction list;
+  labels : (string, address) Hashtbl.t;
+}
+
+exception Parse_error of string
+
 val parse_exn : string -> t
-val get_data : t -> int list
-val get_instructions : t -> instruction list
-val get_num_labels : t -> int
-val resolve_label : t -> string -> address option
