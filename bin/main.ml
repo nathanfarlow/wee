@@ -1,15 +1,15 @@
-open Tlvm
+open Wee
 open Core
 
-let parse_elvm filename =
-  let contents = In_channel.read_all filename in
-  Elvm_program.parse_exn contents
-
 let () =
-  let filename =
+  let filename, mem_size =
     match Sys.get_argv () with
-    | [| _; filename |] -> filename
-    | _ -> failwith "usage: elvm <filename>"
+    | [| _; filename; mem_size |] -> (filename, Int.of_string mem_size)
+    | _ ->
+        failwith
+          "usage: wee <file.elvm> <memory size> for example, wee hello.elvm \
+           1000"
   in
-  let program = Program.compile (parse_elvm filename) ~mem_size:1000 in
-  print_endline (Program.to_string program)
+  let elvm = Elvm_program.parse_exn @@ In_channel.read_all filename in
+  let program = Program.compile elvm ~mem_size in
+  print_endline @@ Program.to_string program

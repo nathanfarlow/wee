@@ -1,4 +1,4 @@
 (executable
- (public_name tlvm)
+ (public_name wee)
  (name main)
- (libraries tlvm))
+ (libraries wee))

@@ -1,8 +1,5 @@
-type tlvm_register = TEMP
-
-type pseudo_register =
-  | Elvm of Elvm_instruction.register
-  | Tlvm of tlvm_register
+type wee_register = TEMP
+type pseudo_register = Elvm of Elvm_instruction.register | Wee of wee_register
 
 type symbolic_arg =
   (* elvm instruction address *)
@@ -13,8 +10,8 @@ type symbolic_arg =
   | Pc_relative of int
   (* constant value *)
   | Const of int
-  (* base address of the resolver *)
-  | Resolver_base
+  (* address of the dispatcher function *)
+  | Dispatcher
   (* address of a pseudo register *)
   | Pseudo_register_addr of pseudo_register
 

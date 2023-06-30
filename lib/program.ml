@@ -90,13 +90,13 @@ let rec make_comparison program comparison ~src ~dst =
       (* A = (src < dst) *)
       make_comparison program Lt ~src ~dst
       (* TEMP = A *)
-      @ write_pseudo (Tlvm TEMP)
+      @ write_pseudo (Wee TEMP)
       (* A = (src == dst) *)
       @ make_comparison program Eq ~src ~dst
       (* B = A *)
       @ [ Swap ]
       (* A = TEMP *)
-      @ read_pseudo (Tlvm TEMP)
+      @ read_pseudo (Wee TEMP)
       (* A = A + B *)
       @ [ Add ]
   | Gt -> make_comparison program Le ~src:dst ~dst:src
@@ -164,8 +164,7 @@ let lower_instruction program (instruction : Elvm_instruction.t) =
         | Int i -> [ Mov (Const 0); Jmpz (Elvm_text_addr i) ]
         | Label l -> [ Mov (Const 0); Jmpz (get_label_addr_exn program l) ]
         | Register r ->
-            read program (Register r)
-            @ [ Swap; Mov (Const 0); Jmpz Resolver_base ]
+            read program (Register r) @ [ Swap; Mov (Const 0); Jmpz Dispatcher ]
       in
       let comparison =
         match condition with
@@ -186,14 +185,14 @@ let lower_instruction program (instruction : Elvm_instruction.t) =
   | Dump -> []
 
 let resolve instructions ~resolve_elvm_text ~resolve_elvm_data ~resolve_register
-    ~resolver_base =
+    ~dispatcher_base =
   let resolve' pc arg =
     match arg with
     | Elvm_text_addr i -> resolve_elvm_text i
     | Elvm_data_addr i -> resolve_elvm_data i
     | Pc_relative i -> pc + i
     | Const i -> i
-    | Resolver_base -> resolver_base
+    | Dispatcher -> dispatcher_base
     | Pseudo_register_addr r -> resolve_register r
   in
   List.mapi instructions ~f:(fun pc instruction : Instruction.t ->
@@ -223,10 +222,10 @@ let lower_instructions program base_address =
   let resolve_elvm_text elvm_pc =
     let offset =
       Hashtbl.find address_mapping elvm_pc
-      |> Option.value_or_thunk ~default:(fun () ->
-             failwith
-               "referencing a label at the end of the program doesn't make \
-                sense. did you forget an exit instruction?")
+      |> Option.value_exn
+           ~message:
+             "referencing a label at the end of the program doesn't make \
+              sense. did you forget an exit instruction?"
     in
     List.length base_address + offset
   in
@@ -236,9 +235,10 @@ let compile program ~mem_size =
   let init = make_stack_init mem_size @ make_data_init program in
   let lowered, resolve_elvm_text = lower_instructions program init in
   let dispatcher =
-    Dispatcher.make_routine program ~translate:resolve_elvm_text
+    Dispatcher.make_routine program ~elvm_to_wee:resolve_elvm_text
   in
-  (* We will place the pseudo registers at the first 7 addresses *)
+  (* we will place the pseudo registers at the first 7 words of memory
+     followed by the elvm data *)
   let resolve_register = function
     | Elvm A -> 0
     | Elvm B -> 1
@@ -246,13 +246,13 @@ let compile program ~mem_size =
     | Elvm D -> 3
     | Elvm SP -> 4
     | Elvm BP -> 5
-    | Tlvm TEMP -> 6
+    | Wee TEMP -> 6
   in
   let resolve_elvm_data i = i + 7 in
-  let resolver_base = List.length init + List.length lowered in
+  let dispatcher_base = List.length init + List.length lowered in
   resolve
     (init @ lowered @ dispatcher)
-    ~resolve_elvm_text ~resolve_elvm_data ~resolve_register ~resolver_base
+    ~resolve_elvm_text ~resolve_elvm_data ~resolve_register ~dispatcher_base
 
 let to_string t =
   let open Instruction in

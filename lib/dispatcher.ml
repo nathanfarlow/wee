@@ -27,14 +27,13 @@ let rec compile program : Symbolic_instruction.t list =
       check @ yes @ no
   | Select pc -> [ Mov (Const 0); Jmpz (Const pc) ]
 
-let make_routine (program : Elvm_program.t) ~translate =
+let make_routine (program : Elvm_program.t) ~elvm_to_wee =
   let addresses =
     List.filter_map (Hashtbl.data program.labels) ~f:(function
       | { segment = Text; offset } -> Some offset
       | _ -> None)
-    |> List.map ~f:translate
+    |> List.map ~f:elvm_to_wee
     |> List.sort ~compare:Int.compare
     |> Array.of_list
   in
-  let program = binary_search addresses in
-  compile program
+  compile @@ binary_search addresses
