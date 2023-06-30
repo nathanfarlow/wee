@@ -211,12 +211,12 @@ let resolve instructions ~resolve_elvm_text ~resolve_elvm_data ~resolve_register
 
 let lower_instructions program base_address =
   let address_mapping = Hashtbl.create (module Int) in
-  let tlvm_pc = ref 0 in
+  let wee_pc = ref 0 in
   let lowered =
     List.concat_mapi program.instructions ~f:(fun elvm_pc insn ->
-        Hashtbl.add_exn address_mapping ~key:elvm_pc ~data:!tlvm_pc;
+        Hashtbl.add_exn address_mapping ~key:elvm_pc ~data:!wee_pc;
         let lowered = lower_instruction program insn in
-        tlvm_pc := !tlvm_pc + List.length lowered;
+        wee_pc := !wee_pc + List.length lowered;
         lowered)
   in
   let resolve_elvm_text elvm_pc =

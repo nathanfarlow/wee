@@ -6,7 +6,7 @@ type symbolic_arg =
   | Elvm_text_addr of int
   (* elvm data address *)
   | Elvm_data_addr of int
-  (* tlvm address relative to tlvm pc *)
+  (* wee address relative to wee pc *)
   | Pc_relative of int
   (* constant value *)
   | Const of int
