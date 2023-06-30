@@ -173,7 +173,7 @@ let lower_instruction program (instruction : Elvm_instruction.t) =
             (* A = (src ? dst) *)
             make_comparison program comparison ~src:args.src
               ~dst:(Register args.dst)
-            (* don't jump if comparison failed *)
+            (* skip jump if comparison failed *)
             @ [ Jmpz (Pc_relative (List.length jump + 1)) ]
         | None -> []
       in
@@ -213,7 +213,7 @@ let resolve instructions ~resolve_elvm_text ~resolve_elvm_data ~resolve_register
 let lower_instructions program base_address =
   let address_mapping = Hashtbl.create (module Int) in
   let tlvm_pc = ref 0 in
-  let translated =
+  let lowered =
     List.concat_mapi program.instructions ~f:(fun elvm_pc insn ->
         Hashtbl.add_exn address_mapping ~key:elvm_pc ~data:!tlvm_pc;
         let lowered = lower_instruction program insn in
@@ -230,11 +230,11 @@ let lower_instructions program base_address =
     in
     List.length base_address + offset
   in
-  (translated, resolve_elvm_text)
+  (lowered, resolve_elvm_text)
 
 let compile program ~mem_size =
   let init = make_stack_init mem_size @ make_data_init program in
-  let translated, resolve_elvm_text = lower_instructions program init in
+  let lowered, resolve_elvm_text = lower_instructions program init in
   let dispatcher =
     Dispatcher.make_routine program ~translate:resolve_elvm_text
   in
@@ -249,9 +249,9 @@ let compile program ~mem_size =
     | Tlvm TEMP -> 6
   in
   let resolve_elvm_data i = i + 7 in
-  let resolver_base = List.length init + List.length translated in
+  let resolver_base = List.length init + List.length lowered in
   resolve
-    (init @ translated @ dispatcher)
+    (init @ lowered @ dispatcher)
     ~resolve_elvm_text ~resolve_elvm_data ~resolve_register ~resolver_base
 
 let to_string t =
