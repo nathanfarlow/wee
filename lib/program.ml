@@ -5,16 +5,23 @@ open Symbolic_instruction
 
 type t = Instruction.t list
 
-let make_data_init program =
-  Mov (Elvm_data_addr 0)
-  :: List.concat_map program.data ~f:(fun v ->
-         [ Swap; Mov (Const v); Swap; Store; Swap; Mov (Const 1); Add ])
+let address_to_symbol = function
+  | { segment = Data; offset } -> Elvm_data_addr offset
+  | { segment = Text; offset } -> Elvm_text_addr offset
 
 let get_label_addr_exn program label =
   let address = Hashtbl.find_exn program.labels label in
-  match address.segment with
-  | Data -> Elvm_data_addr address.offset
-  | Text -> Elvm_text_addr address.offset
+  address_to_symbol address
+
+let make_data_init program =
+  Mov (Elvm_data_addr 0)
+  :: List.concat_map program.data ~f:(fun v ->
+         let value =
+           match v with
+           | Const v -> Const v
+           | Address addr -> address_to_symbol addr
+         in
+         [ Swap; Mov value; Swap; Store; Swap; Mov (Const 1); Add ])
 
 (* A = pseudo register value. B is unchanged *)
 let read_pseudo register = [ Mov (Pseudo_register_addr register); Load ]

@@ -3,9 +3,10 @@ open Elvm_instruction
 
 type segment = Data | Text
 type address = { segment : segment; offset : int }
+type data_entry = Const of int | Address of address
 
 type t = {
-  data : int list;
+  data : data_entry list;
   instructions : Elvm_instruction.t list;
   labels : (string, address) Hashtbl.t;
 }
@@ -13,10 +14,10 @@ type t = {
 exception Parse_error of string
 
 type long = Label of string | Number of int
-type data = Long of long | String of string
+type data_declaration = Long of long | String of string
 
 module Directive = struct
-  type t = Text of int | Data of int | Init of data
+  type t = Text of int | Data of int | Init of data_declaration
 end
 
 type statement =
@@ -60,8 +61,9 @@ let parse_directive labels line =
   | [ ".string"; arg ] ->
       let inside_quotes = Str.regexp {|"\(.*\)"|} in
       if Str.string_match inside_quotes arg 0 then
-        let s = Scanf.unescaped @@ Str.matched_group 1 arg in
-        Some (Init (String s))
+        let unescaped = Scanf.unescaped @@ Str.matched_group 1 arg in
+        let with_null_terminator = unescaped ^ "\x00" in
+        Some (Init (String with_null_terminator))
       else raise @@ Parse_error ("invalid argument for .string: " ^ arg)
   | _ -> None
 
@@ -183,15 +185,16 @@ let make_sections statements resolve_label =
           match !current_section with
           | Some (Data sub) -> (
               match value with
-              | Long (Number n) -> add data sub n
-              | Long (Label label) -> add data sub (resolve_label label)
+              | Long (Number n) -> add data sub (Const n)
+              | Long (Label label) ->
+                  add data sub (Address (resolve_label label))
               | String s ->
-                  String.iter s ~f:(fun c -> add data sub (Char.to_int c)))
+                  String.iter s ~f:(fun c ->
+                      add data sub (Const (Char.to_int c))))
           | _ -> raise @@ Parse_error "cannot declare data outside .data")
       | Label label ->
-          let length table subsection =
-            Hashtbl.find_or_add table subsection ~default:(fun () ->
-                Deque.create ())
+          let length table sub =
+            Hashtbl.find_or_add table sub ~default:(fun () -> Deque.create ())
             |> Deque.length
           in
           let value =
@@ -211,18 +214,17 @@ let make_sections statements resolve_label =
 
 let make_segments statements resolve_label =
   let labels, data, instructions = make_sections statements resolve_label in
-
   let flatten table =
-    let sorted =
+    let sorted_subsections =
       Hashtbl.to_alist table
       |> List.sort ~compare:(fun (a, _) (b, _) -> Int.compare a b)
     in
     let flattened =
-      List.map sorted ~f:snd
+      List.map sorted_subsections ~f:snd
       |> List.concat_map ~f:(fun deque -> Deque.to_list deque)
     in
     let indices =
-      List.folding_map sorted ~init:0 ~f:(fun index (key, deque) ->
+      List.folding_map sorted_subsections ~init:0 ~f:(fun index (key, deque) ->
           let length = Deque.length deque in
           let next_index = index + length in
           (next_index, (key, index)))
@@ -234,20 +236,24 @@ let make_segments statements resolve_label =
   let data_segment, data_subsection_offsets = flatten data in
   let text_segment, text_subsection_offsets = flatten instructions in
 
-  let make_address segment subsection table offset =
-    let offset = offset + Hashtbl.find_exn table subsection in
+  let make_address table segment ~sub ~offset =
+    let offset = offset + Hashtbl.find_exn table sub in
     { segment; offset }
   in
 
   let segment_labels =
     Hashtbl.map labels ~f:(fun (section, offset) ->
         match section with
-        | Data sub -> make_address Data sub data_subsection_offsets offset
-        | Text sub -> make_address Text sub text_subsection_offsets offset)
+        | Data sub -> make_address data_subsection_offsets Data ~sub ~offset
+        | Text sub -> make_address text_subsection_offsets Text ~sub ~offset)
   in
   (* add elvm's magic heap base pointer *)
+  let data_len = List.length data_segment in
   Hashtbl.add_exn segment_labels ~key:"_edata"
-    ~data:{ segment = Data; offset = List.length data_segment };
+    ~data:{ segment = Data; offset = data_len };
+  let data_segment =
+    data_segment @ [ Address { segment = Data; offset = data_len + 1 } ]
+  in
   { data = data_segment; instructions = text_segment; labels = segment_labels }
 
 let make_program statements =
@@ -255,10 +261,11 @@ let make_program statements =
      parse out the .text and .data subsections, and then compile them
      into two contiguous text and data segments. *)
   (* all references to labels are set to 0 as a first pass *)
-  let program = make_segments statements (fun _ -> 0) in
+  let program =
+    make_segments statements (fun _ -> { segment = Data; offset = 0 })
+  in
   (* parse again now that we know segment label offsets *)
-  make_segments statements (fun label ->
-      (Hashtbl.find_exn program.labels label).offset)
+  make_segments statements (fun label -> Hashtbl.find_exn program.labels label)
 
 let parse_exn source =
   let lines =
