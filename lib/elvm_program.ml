@@ -127,6 +127,13 @@ let parse_instruction line labels =
   | [ "exit" ] -> Some Exit
   | [ "jmp"; target ] ->
       let target = parse_immediate_or_register target in
+      (match target with
+      | Int _ ->
+          raise
+          @@ Parse_error
+               "jmp [int] isn't supported. use jmp [label] instead. this never \
+                worked in elvm anyway."
+      | _ -> ());
       Some (Jump { target; condition = None })
   | [ "jeq"; target; dst; src ] -> parse_conditional_jump Eq target ~src ~dst
   | [ "jne"; target; dst; src ] -> parse_conditional_jump Ne target ~src ~dst
@@ -265,5 +272,15 @@ let parse_exn source =
     |> List.filter ~f:(fun line -> not @@ is_noop line)
   in
   let labels = get_all_labels lines in
-  let statements = List.map lines ~f:(parse_statement labels) in
+  (* elvm starts execution in the main function if it's present. this breaks
+     jmp int, but that's fine since it never worked with elvm in the first place. *)
+  let boostrap =
+    if Hash_set.mem labels "main" then
+      [
+        Directive (Text 0);
+        Instruction (Jump { target = Label "main"; condition = None });
+      ]
+    else []
+  in
+  let statements = boostrap @ List.map lines ~f:(parse_statement labels) in
   make_program statements
