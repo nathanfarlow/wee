@@ -21,12 +21,9 @@ let compile numbers =
 
 let make_routine program ~elvm_to_wee =
   let open Elvm_program in
-  let addresses =
-    List.filter_map (Hashtbl.data program.labels) ~f:(function
-      | { segment = Text; offset } -> Some offset
-      | _ -> None)
-    |> List.map ~f:elvm_to_wee
-    |> List.sort ~compare:Int.compare
-    |> Array.of_list
-  in
-  compile addresses
+  List.filter_map (Hashtbl.data program.labels) ~f:(function
+    | { segment = Text; offset } -> Some offset
+    | _ -> None)
+  |> List.map ~f:elvm_to_wee
+  |> List.sort ~compare:Int.compare
+  |> Array.of_list |> compile
