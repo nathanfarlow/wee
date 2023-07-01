@@ -1,5 +1,10 @@
 #!/bin/bash
 
+if ! [ -x "$(command -v docker)" ]; then
+    echo "Error: docker is not installed. Install docker and try again." >&2
+    exit 1
+fi
+
 if [ $# -ne 2 ]; then
     echo "Usage: $0 <file.c> <memory size>" >&2
     echo "Example: $0 test.c 100000" >&2
