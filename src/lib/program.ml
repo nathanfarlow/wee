@@ -34,14 +34,14 @@ let make_stack_init mem_size =
   init SP @ init BP
 
 (* A = src. B is unchanged *)
-let read program src : Symbolic_instruction.t list =
+let read program src =
   match src with
   | Int i -> [ Mov (Const i) ]
   | Register r -> read_pseudo (Elvm r)
   | Label l -> [ Mov (get_label_addr_exn program l) ]
 
 (* dst = A. B is clobbered *)
-let write program dst : Symbolic_instruction.t list =
+let write program dst =
   match dst with
   | Int i -> [ Swap; Mov (Elvm_data_addr i); Store ]
   | Register r -> write_pseudo (Elvm r)
@@ -192,14 +192,14 @@ let lower_instruction program (instruction : Elvm_instruction.t) =
   | Dump -> []
 
 let resolve instructions ~resolve_elvm_text ~resolve_elvm_data ~resolve_register
-    ~dispatcher_base =
+    ~dispatcher_addr =
   let resolve' pc arg =
     match arg with
     | Elvm_text_addr i -> resolve_elvm_text i
     | Elvm_data_addr i -> resolve_elvm_data i
     | Pc_relative i -> pc + i
     | Const i -> i
-    | Dispatcher -> dispatcher_base
+    | Dispatcher -> dispatcher_addr
     | Pseudo_register_addr r -> resolve_register r
   in
   List.mapi instructions ~f:(fun pc instruction : Instruction.t ->
@@ -256,10 +256,10 @@ let compile program ~mem_size =
     | Wee TEMP -> 6
   in
   let resolve_elvm_data i = i + 7 in
-  let dispatcher_base = List.length init + List.length lowered in
+  let dispatcher_addr = List.length init + List.length lowered in
   resolve
     (init @ lowered @ dispatcher)
-    ~resolve_elvm_text ~resolve_elvm_data ~resolve_register ~dispatcher_base
+    ~resolve_elvm_text ~resolve_elvm_data ~resolve_register ~dispatcher_addr
 
 let to_string t =
   let open Instruction in

@@ -14,10 +14,10 @@ type t = {
 exception Parse_error of string
 
 type long = Label of string | Number of int
-type data_declaration = Long of long | String of string
+type declaration = Long of long | String of string
 
 module Directive = struct
-  type t = Text of int | Data of int | Init of data_declaration
+  type t = Text of int | Data of int | Init of declaration
 end
 
 type statement =
@@ -134,7 +134,7 @@ let parse_instruction line labels =
           raise
           @@ Parse_error
                "jmp [int] isn't supported. use jmp [label] instead. this never \
-                worked in elvm anyway."
+                worked in elvm anyway..."
       | _ -> ());
       Some (Jump { target; condition = None })
   | [ "jeq"; target; dst; src ] -> parse_conditional_jump Eq target ~src ~dst
@@ -281,7 +281,7 @@ let parse_exn source =
   let labels = get_all_labels lines in
   (* elvm starts execution in the main function if it's present. this breaks
      jmp int, but that's fine since it never worked with elvm in the first place. *)
-  let boostrap =
+  let jump_main =
     if Hash_set.mem labels "main" then
       [
         Directive (Text 0);
@@ -289,5 +289,5 @@ let parse_exn source =
       ]
     else []
   in
-  let statements = boostrap @ List.map lines ~f:(parse_statement labels) in
+  let statements = jump_main @ List.map lines ~f:(parse_statement labels) in
   make_program statements

@@ -1,24 +1,24 @@
 open Core
 
-type program =
-  | If_lt of { value : int; yes : program; no : program }
+type dispatcher =
+  | Check_lt of { value : int; yes : dispatcher; no : dispatcher }
   | Select of int
 
-let binary_search sorted_numbers =
+let binary_search numbers =
   let rec binary_search' left right =
-    if left = right then Select sorted_numbers.(left)
+    if left = right then Select numbers.(left)
     else
       let mid = (left + right) / 2 in
       let no = binary_search' left mid in
       let yes = binary_search' (mid + 1) right in
-      If_lt { value = sorted_numbers.(mid); yes; no }
+      Check_lt { value = numbers.(mid); yes; no }
   in
-  binary_search' 0 (Array.length sorted_numbers - 1)
+  binary_search' 0 (Array.length numbers - 1)
 
-let rec compile program : Symbolic_instruction.t list =
+let rec compile program =
   let open Symbolic_instruction in
   match program with
-  | If_lt { value; yes; no } ->
+  | Check_lt { value; yes; no } ->
       let yes = compile yes in
       let no = compile no in
       let check =
@@ -27,7 +27,8 @@ let rec compile program : Symbolic_instruction.t list =
       check @ yes @ no
   | Select pc -> [ Mov (Const 0); Jmpz (Const pc) ]
 
-let make_routine (program : Elvm_program.t) ~elvm_to_wee =
+let make_routine program ~elvm_to_wee =
+  let open Elvm_program in
   let addresses =
     List.filter_map (Hashtbl.data program.labels) ~f:(function
       | { segment = Text; offset } -> Some offset
