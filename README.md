@@ -22,7 +22,7 @@ wee programs have a memory array and 2 registers `A` and `B`. There are 11 instr
 Some key takeaways: There are no redundant comparison instructions. There is no jump register instruction. There are no labels nor data declarations. 
 
 ## Usage
-To compile a C program to wee, you'll first need to install Docker. Then, clone the repo and run the compile script. The first run will take a while to build the docker image.
+To compile a C program to wee, clone the repo and run the compile script. The compile script requires docker. The first run will take a while to build the docker image.
 ```bash
 git clone https://github.com/nathanfarlow/wee.git
 cd wee
@@ -37,7 +37,7 @@ See the [example directory](https://github.com/nathanfarlow/wee/tree/main/exampl
 ## FAQ
 **Q:** Why does a simple C program produce so many instructions?
 
-**A:** The elvm -> wee compilation is very efficient, incurring on average an ~X instruction overhead. The elvm C compiler is _extremely_ inefficient, though. They've done great work making things function, and an optimizer could take things to the next level.
+**A:** The elvm -> wee compilation is efficient all things considered. It incurs about a 6.7x instruction overhead. The elvm C compiler is _extremely_ inefficient, though. They've done great work making things function, and an elvm optimizer could take things to the next level.
 
 **Q:** How do I perform side effects beyond input/output of characters, like drawing to a screen?
 

@@ -19,7 +19,6 @@ fi
 PARENT_DIR=$(realpath $(dirname $1))
 FILE_NAME=$(basename $1)
 
-# check if docker image already exists
 if [ -z "$(docker images -q wee)" ]; then
     echo "Building docker image for the first time. This may take several minutes." >&2
 fi
