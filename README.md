@@ -30,9 +30,7 @@ cd wee
 ```
 Here, the memory size argument is the size of the memory array (number of words) your backend will support.
 
-Now you can interpret the wee file or compile it to a new target! An example python interpreter can be found [here](https://github.com/nathanfarlow/wee/tree/main/interpreter.py).
-
-See the [example directory](https://github.com/nathanfarlow/wee/tree/main/example) for a example C program that demonstrates I/O and stdlib things and the commands to compile and run it.
+Now you can interpret the wee file or compile it to a new target! An example python interpreter can be found [here](https://github.com/nathanfarlow/wee/tree/main/interpreter.py). See the [example directory](https://github.com/nathanfarlow/wee/tree/main/example) for a example C program that demonstrates I/O and stdlib things and the commands to compile and run it.
 
 ## FAQ
 **Q:** Why does a simple C program produce so many instructions?
