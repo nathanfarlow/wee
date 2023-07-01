@@ -49,14 +49,16 @@ let write program dst =
 
 (* A = comparison of src and dst. B is clobbered. *)
 let rec make_comparison program comparison ~src ~dst =
+  let read = read program in
+  let make_comparison = make_comparison program in
   match comparison with
   | Eq ->
       (* A = src *)
-      read program src
+      read src
       (* B = A *)
       @ [ Swap ]
       (* A = dst *)
-      @ read program dst
+      @ read dst
       @ [
           (* A = A - B *)
           Sub;
@@ -71,11 +73,11 @@ let rec make_comparison program comparison ~src ~dst =
         ]
   | Ne ->
       (* A = src *)
-      read program src
+      read src
       (* B = A *)
       @ [ Swap ]
       (* A = dst *)
-      @ read program dst
+      @ read dst
       @ [
           (* A = A - B *)
           Sub;
@@ -86,84 +88,87 @@ let rec make_comparison program comparison ~src ~dst =
         ]
   | Lt ->
       (* A = src *)
-      read program src
+      read src
       (* B = A *)
       @ [ Swap ]
       (* A = dst *)
-      @ read program dst
+      @ read dst
       (* A = (A < B) *)
       @ [ Setlt ]
   | Le ->
       (* A = (src < dst) *)
-      make_comparison program Lt ~src ~dst
+      make_comparison Lt ~src ~dst
       (* TEMP = A *)
       @ write_pseudo (Wee TEMP)
       (* A = (src == dst) *)
-      @ make_comparison program Eq ~src ~dst
+      @ make_comparison Eq ~src ~dst
       (* B = A *)
       @ [ Swap ]
       (* A = TEMP *)
       @ read_pseudo (Wee TEMP)
       (* A = A + B *)
       @ [ Add ]
-  | Gt -> make_comparison program Le ~src:dst ~dst:src
-  | Ge -> make_comparison program Lt ~src:dst ~dst:src
+  | Gt -> make_comparison Le ~src:dst ~dst:src
+  | Ge -> make_comparison Lt ~src:dst ~dst:src
 
 let lower_instruction program (instruction : Elvm_instruction.t) =
+  let read = read program in
+  let write = write program in
+  let make_comparison = make_comparison program in
   match instruction with
   | Mov { src; dst } ->
       (* A = src *)
-      read program src
+      read src
       (* dst = A *)
-      @ write program (Register dst)
+      @ write (Register dst)
   | Add { src; dst } ->
       (* A = src *)
-      read program src
+      read src
       (* B = A *)
       @ [ Swap ]
       (* A = dst *)
-      @ read program (Register dst)
+      @ read (Register dst)
       (* A = A + B *)
       @ [ Add ]
       (* dst = A *)
-      @ write program (Register dst)
+      @ write (Register dst)
   | Sub { src; dst } ->
       (* A = src *)
-      read program src
+      read src
       (* B = A *)
       @ [ Swap ]
       (* A = dst *)
-      @ read program (Register dst)
+      @ read (Register dst)
       (* A = A - B *)
       @ [ Sub ]
       (* dst = A *)
-      @ write program (Register dst)
+      @ write (Register dst)
   | Load { src; dst } ->
       (* A = src *)
-      read program src
+      read src
       (* A = mem[A] *)
       @ [ Load ]
       (* dst = A *)
-      @ write program (Register dst)
+      @ write (Register dst)
   | Store { src; dst } ->
       (* A = src *)
-      read program (Register src)
+      read (Register src)
       (* B = A *)
       @ [ Swap ]
       (* A = dst *)
-      @ read program dst
+      @ read dst
       (* mem[A] = B *)
       @ [ Store ]
   | Putc src ->
       (* A = src *)
-      read program src
+      read src
       (* putc A *)
       @ [ Putc ]
   | Getc dst ->
       (* A = getc *)
       [ Getc ]
       (* dst = A *)
-      @ write program (Register dst)
+      @ write (Register dst)
   | Exit -> [ Exit ]
   | Jump { target; condition } ->
       let jump =
@@ -171,14 +176,13 @@ let lower_instruction program (instruction : Elvm_instruction.t) =
         | Int i -> [ Mov (Const 0); Jmpz (Elvm_text_addr i) ]
         | Label l -> [ Mov (Const 0); Jmpz (get_label_addr_exn program l) ]
         | Register r ->
-            read program (Register r) @ [ Swap; Mov (Const 0); Jmpz Dispatcher ]
+            read (Register r) @ [ Swap; Mov (Const 0); Jmpz Dispatcher ]
       in
       let comparison =
         match condition with
         | Some { comparison; args } ->
             (* A = (src ? dst) *)
-            make_comparison program comparison ~src:args.src
-              ~dst:(Register args.dst)
+            make_comparison comparison ~src:args.src ~dst:(Register args.dst)
             (* skip jump if comparison failed *)
             @ [ Jmpz (Pc_relative (List.length jump + 1)) ]
         | None -> []
@@ -186,9 +190,9 @@ let lower_instruction program (instruction : Elvm_instruction.t) =
       comparison @ jump
   | Set { comparison; args } ->
       (* A = src ? dst *)
-      make_comparison program comparison ~src:args.src ~dst:(Register args.dst)
+      make_comparison comparison ~src:args.src ~dst:(Register args.dst)
       (* dst = A *)
-      @ write program (Register args.dst)
+      @ write (Register args.dst)
   | Dump -> []
 
 let resolve instructions ~resolve_elvm_text ~resolve_elvm_data ~resolve_register
