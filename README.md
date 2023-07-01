@@ -37,7 +37,7 @@ See the [example directory](https://github.com/nathanfarlow/wee/tree/main/exampl
 ## FAQ
 **Q:** Why does a simple C program produce so many instructions?
 
-**A:** The elvm -> wee compilation is efficient all things considered. It incurs about a 6.5x instruction overhead. The elvm C compiler is _extremely_ inefficient, though. They've done great work making things function, and an elvm optimizer could take things to the next level.
+**A:** The elvm -> wee compilation is efficient all things considered. It incurs about a 6.5x instruction overhead. The elvm C compiler is very inefficient, though. They've done great work making things function, and an elvm optimizer could take things to the next level.
 
 **Q:** How do I perform side effects beyond input/output of characters, like drawing to a screen?
 
