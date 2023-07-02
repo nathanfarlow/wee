@@ -8,5 +8,5 @@ let () =
     | _ -> failwith "usage: wee <file.elvm> <memory size>"
   in
   let elvm = Elvm_program.parse_exn @@ In_channel.read_all filename in
-  let program = Program.compile elvm ~mem_size in
+  let program = Compiler.f elvm ~mem_size in
   print_endline @@ Program.to_string program

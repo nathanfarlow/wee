@@ -1,0 +1,18 @@
+(executables
+ (names index)
+ (libraries wee)
+ (preprocess
+  (pps js_of_ocaml-ppx))
+ (modes js))
+
+(alias
+ (name all)
+ (deps
+  (glob_files *.html)
+  (glob_files *.js)))
+
+(rule
+ (targets index.js)
+ (deps index.bc.js)
+ (action
+  (run cp %{deps} %{targets})))

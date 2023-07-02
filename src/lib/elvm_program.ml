@@ -274,8 +274,7 @@ let parse_exn source =
       String.is_empty line
       || List.exists ~f:(fun prefix -> String.is_prefix line ~prefix) prefixes
     in
-    String.split_on_chars ~on:[ '\r'; '\n' ] source
-    |> List.map ~f:String.strip
+    String.split_lines source |> List.map ~f:String.strip
     |> List.filter ~f:(fun line -> not @@ is_noop line)
   in
   let labels = get_all_labels lines in

@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- headers.js and 8cc.c.eir.js are from http://shinh.skr.jp/elvm -->
+    <script src="headers.js"></script>
+    <script src="8cc.c.eir.js"></script>
+    <script src="index.js"></script>
+
+    <title>C -> wee</title>
+
+    <style>
+        /* Dark theme styles */
+        body {
+            background-color: #121212;
+            color: #FFFFFF;
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            margin: 0 auto;
+            display: flex;
+            flex-direction: row;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .textbox {
+            width: 100%;
+            min-width: 100px;
+            height: 400px;
+            background-color: #1E1E1E;
+            color: #FFFFFF;
+            font-family: monospace;
+            font-size: 14px;
+            padding: 10px;
+            margin-bottom: 20px;
+            border: none;
+            border-radius: 5px;
+            margin-left: 10px;
+            margin-right: 10px;
+            resize: none;
+            white-space: nowrap;
+            overflow: auto;
+        }
+
+        .textbox:focus {
+            outline: none;
+            box-shadow: 0 0 5px #808080;
+        }
+
+        @media screen and (max-width: 600px) {
+            .container {
+                padding: 10px;
+                flex-direction: column;
+            }
+        }
+
+        .error-message {
+            color: red;
+            font-weight: bold;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .button-container {
+            display: flex;
+            justify-content: center;
+            margin-top: 20px;
+        }
+
+        .btn {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            padding: 10px 20px;
+            margin-right: 10px;
+            cursor: pointer;
+            font-size: 20px;
+        }
+
+        .btn:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>C -> wee compiler</h1>
+    <div class="container">
+        <textarea id="c" class="textbox" spellcheck="false" placeholder="enter C code here...">
+extern void putchar(int);
+
+void puts(const char *s) {
+    while (*s) {
+        putchar(*s++);
+    }
+    putchar('\n');
+}
+
+int main() {
+    puts("Hello, world!");
+    return 0;
+}</textarea>
+        <textarea id="wee" class="textbox" spellcheck="false" placeholder="enter wee instructions here"></textarea>
+        <textarea id="output" class="textbox" spellcheck="false" placeholder="output of a wee program will be here"
+            disabled></textarea>
+    </div>
+    <p class="error-message" id="error"></p>
+    <div class="button-container">
+        <button id="compile" class="btn">Compile C</button>
+        <button id="run" class="btn">Run wee</button>
+    </div>
+</body>
+
+<script>
+    const memSize = 10000;
+
+    const reportError = (msg) => {
+        document.getElementById('error').innerText = msg;
+    }
+
+    const clearError = () => {
+        document.getElementById('error').innerText = '';
+    }
+
+    const compileWeeFromC = (src) => {
+        // most of this is from http://shinh.skr.jp/elvm/8cc.js.html
+        const compileCToElvm = (src) => {
+            const getchar = (() => {
+                var i = 0;
+                return () => src.charCodeAt(i++) | 0;
+            })();
+
+            var output = '';
+            const putchar = (c) => {
+                output += String.fromCharCode(c & 255);
+            };
+
+
+            const processInclude = (src, used) => {
+                return src.replace(/#\s*include\s*[<"](.*?)[>"]/g, function (_, hn) {
+                    if (used[hn])
+                        return '';
+                    used[hn] = true;
+                    var h = processInclude(HEADERS[hn], used);
+                    if (!h) {
+                        throw hn + ": No such file or directory";
+                    }
+                    return h;
+                });
+            }
+
+            src = processInclude(src, {});
+
+            main(getchar, putchar);
+
+            const filterCompilerOutput = (out) => {
+                var errors = '';
+                const elvm = out.replace(/\x1b\[1;31m(\[.*?\])\x1b\[0m(.*)/g, function (_, t, m) {
+                    errors += t + m + "\n";
+                    return '';
+                });
+                errors = errors.replace(/[^\x20-\x7E]/g, '');
+                if (errors) {
+                    throw errors;
+                }
+                return elvm.trim();
+            }
+
+            return filterCompilerOutput(output);
+        };
+
+        const elvm = compileCToElvm(src);
+        return compileElvmToWee(elvm, memSize);
+    }
+
+    window.addEventListener('load', () => {
+        document.getElementById('compile').addEventListener('click', () => {
+            clearError();
+            document.getElementById('wee').value = '';
+
+            try {
+                const c = document.getElementById('c').value;
+                const wee = compileWeeFromC(c);
+                document.getElementById('wee').value = weeToString(wee);
+            } catch (e) {
+                reportError(e);
+                return;
+            }
+
+        });
+
+        document.getElementById('run').addEventListener('click', () => {
+            clearError();
+            document.getElementById('output').value = '';
+
+            try {
+                const weeSrc = document.getElementById('wee').value;
+
+                if (weeSrc.indexOf('exit') === -1) {
+                    reportError('error: wee programs must contain "exit" instruction');
+                    return;
+                }
+
+                const wee = parseWee(weeSrc);
+                const text = weeToString(wee);
+                const output = runWee(wee, memSize);
+                document.getElementById('output').value = output;
+            } catch (e) {
+                reportError('error: ' + e[2]);
+            }
+        });
+    });
+</script>
+
+</html>
