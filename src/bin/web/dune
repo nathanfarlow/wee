@@ -8,11 +8,22 @@
 (alias
  (name all)
  (deps
-  (glob_files *.html)
-  (glob_files *.js)))
+  (glob_files *.html)))
 
 (rule
- (targets index.js)
+ (targets index.bc-min.js)
  (deps index.bc.js)
  (action
-  (run cp %{deps} %{targets})))
+  (run uglifyjs -m -o %{targets} %{deps})))
+
+(rule
+ (targets headers-min.js)
+ (deps headers.js)
+ (action
+  (run uglifyjs -m -o %{targets} %{deps})))
+
+(rule
+ (targets 8cc.c.eir-min.js)
+ (deps 8cc.c.eir.js)
+ (action
+  (run uglifyjs -m -o %{targets} %{deps})))

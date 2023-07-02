@@ -6,5 +6,5 @@ COPY src src
 RUN sudo chown -R opam:opam src
 WORKDIR /home/opam/src
 RUN opam install . --deps-only
-RUN opam exec -- dune build --profile=release
-RUN sudo cp _build/default/bin/main.exe /usr/local/bin/wee
+RUN opam exec -- dune build -p wee
+RUN sudo cp _build/default/bin/native/main.exe /usr/local/bin/wee
