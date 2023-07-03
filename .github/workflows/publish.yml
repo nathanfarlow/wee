@@ -1,7 +1,7 @@
 on:
   push:
     branches: ['main']
-    paths: ['src/**']
+    paths: ['src/**', '.github/workflows/publish.yml']
   workflow_dispatch:
 
 jobs:
@@ -29,6 +29,10 @@ jobs:
 
       - name: Build wee
         run: opam exec -- dune build --profile=release
+        working-directory: src
+      
+      - name: Delete big files
+        run: find . -type f -size +10M -delete
         working-directory: src
 
       - name: Publish to Cloudflare Pages
