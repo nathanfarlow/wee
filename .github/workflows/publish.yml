@@ -22,11 +22,13 @@ jobs:
         with:
           ocaml-compiler: 4.13.1
 
+      - name: Install opam dependencies
+        run: opam install . --deps-only
+        working-directory: src
+
       - name: Build wee
-        run: |
-          cd src
-          opam install . --deps-only
-          opam exec -- dune build --profile=release
+        run: opam exec -- dune build --profile=release
+        working-directory: src
 
       - name: Publish to Cloudflare Pages
         uses: cloudflare/pages-action@v1
