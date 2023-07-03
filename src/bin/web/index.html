@@ -21,7 +21,11 @@
             padding: 20px;
         }
 
-        .container {
+        .info-container {
+            padding-left: 10px;
+        }
+
+        .text-container {
             margin: 0 auto;
             display: flex;
             flex-direction: row;
@@ -92,8 +96,12 @@
 </head>
 
 <body>
-    <h1 style="padding: 10px">C to wee compiler</h1>
-    <div class="container">
+    <div class="info-container">
+        <h1>C to wee compiler</h1>
+        <h3>source and docs <a href="https://github.com/nathanfarlow/wee">here</a></h3>
+    </div>
+
+    <div class="text-container">
         <textarea id="c" class="textbox" spellcheck="false" placeholder="enter C code here...">
 // you can also use stdlib things like
 // printf by including stdio.h but
