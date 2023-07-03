@@ -5,6 +5,6 @@ RUN cd elvm && make
 COPY src src
 RUN sudo chown -R opam:opam src
 WORKDIR /home/opam/src
-RUN opam install . --deps-only
+RUN opam update && opam install . --deps-only --verbose
 RUN opam exec -- dune build -p wee
 RUN sudo cp _build/default/bin/native/main.exe /usr/local/bin/wee

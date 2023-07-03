@@ -18,4 +18,4 @@
 (package
  (name wee)
  (synopsis "Compile elvm IR to wee")
- (depends ocaml dune core))
+ (depends ocaml dune core js_of_ocaml-ppx))

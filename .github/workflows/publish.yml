@@ -1,4 +1,7 @@
-on: [push]
+on:
+  push:
+    branches: ['main']
+    paths: ['src/**']
 
 jobs:
   publish:
@@ -11,12 +14,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
 
+      - name: Install uglifyjs
+        run: npm install -g uglify-js
+
       - name: Setup OCaml
         uses: ocaml/setup-ocaml@v2
         with:
           ocaml-compiler: 4.13.1
 
-      - name: Build
+      - name: Build wee
         run: |
           cd src
           opam install . --deps-only

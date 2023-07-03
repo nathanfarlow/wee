@@ -11,6 +11,7 @@ depends: [
   "ocaml"
   "dune" {>= "3.7"}
   "core"
+  "js_of_ocaml-ppx"
   "odoc" {with-doc}
 ]
 build: [
