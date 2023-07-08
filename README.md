@@ -37,7 +37,7 @@ Now you can interpret the wee file or compile it to a new target! An example pyt
 ## FAQ
 **Q:** Why does a simple C program produce so many instructions?
 
-**A:** The elvm to wee compilation is efficient given the nature of the transformation. It incurs about a 6.5x instruction overhead (compared to elvm to brainfuck's ~1335x). The C to elvm compiler is very inefficient, though. They've done great work making things function, and an elvm optimizer could take things to the next level.
+**A:** The elvm to wee compilation is efficient given the nature of the transformation. It incurs about a 6.5x instruction overhead (compared to elvm to brainfuck's ~1335x). The C to elvm compiler is very inefficient, though. I'm working on an optimizer [here](https://github.com/nathanfarlow/elvm-optimizer).
 
 **Q:** How do I perform side effects beyond input/output of characters, like drawing to a screen?
 
@@ -45,4 +45,4 @@ Now you can interpret the wee file or compile it to a new target! An example pyt
 
 **Q:** What about bitwise operations? Floating point math?
 
-**A:** It won't be efficient, but you can do bitwise operations. You can write slow divide, mod, and multiply functions. This will give you all you need to deconstruct a number into its bits and construct a number from bits. One idea to replace floating point math is to use [fixed point arithmetic](https://en.wikipedia.org/wiki/Fixed-point_arithmetic). An alternative to both of these ideas is to again use your repurposed putc/getc channel to natively compute values interpreter/native side.
+**A:** It won't be efficient, but you can do bitwise operations in pure wee. You can write slow divide, mod, and multiply functions. This will give you all you need to deconstruct a number into its bits and construct a number from bits. One idea to replace floating point math is to use [fixed point arithmetic](https://en.wikipedia.org/wiki/Fixed-point_arithmetic). An alternative to both of these ideas is to again use your repurposed putc/getc channel to natively compute values interpreter/native side.
