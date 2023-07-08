@@ -41,7 +41,7 @@ Now you can interpret the wee file or compile it to a new target! An example pyt
 
 **Q:** How do I perform side effects beyond input/output of characters, like drawing to a screen?
 
-**A:** I recommend in this case you repurpose getc/putc to be a communication channel between your program and your interpreter. For example, maybe your wee program wants to draw to pixel (10, 20). Perhaps it calls putc 3 times: once with an integer denoting the "start draw" command, then 10, then 20.
+**A:** I recommend in this case you repurpose getc/putc to be a communication channel between your program and your interpreter/native side. For example, maybe your wee program wants to draw to pixel (10, 20). Perhaps it calls putc 3 times: once with an integer denoting the "start draw" command, then 10, then 20.
 
 **Q:** What about bitwise operations? Floating point math?
 
