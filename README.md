@@ -45,4 +45,4 @@ Now you can interpret the wee file or compile it to a new target! An example pyt
 
 **Q:** What about bitwise operations? Floating point math?
 
-**A:** It won't be efficient, but you can do bitwise operations. You can write slow divide, mod, and multiply functions. This will give you all you need to deconstruct a number into its bits and construct a number from bits. One idea to replace floating point math is to use [fixed point arithmetic](https://en.wikipedia.org/wiki/Fixed-point_arithmetic).
+**A:** It won't be efficient, but you can do bitwise operations. You can write slow divide, mod, and multiply functions. This will give you all you need to deconstruct a number into its bits and construct a number from bits. One idea to replace floating point math is to use [fixed point arithmetic](https://en.wikipedia.org/wiki/Fixed-point_arithmetic). An alternative to both of these ideas is to again use your repurposed putc/getc channel to natively compute values interpreter/native side.
