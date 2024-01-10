@@ -1,6 +1,6 @@
 # wee
 
-wee is a truly minimal instruction set designed to be as easy to port to a system/esolang as possible. This repository facilitates compiling C to wee. See [usage](#usage). The C is first compiled to elvm IR using the [elvm C compiler](https://github.com/shinh/elvm). The IR is then compiled to wee.
+wee is a minimal instruction set designed to be as easy to port to a system/esolang as possible. This repository facilitates compiling C to wee. See [usage](#usage). The C is first compiled to elvm IR using the [elvm C compiler](https://github.com/shinh/elvm). The IR is then compiled to wee.
 
 Try the [web demo](https://wee.farlow.dev)!
 
